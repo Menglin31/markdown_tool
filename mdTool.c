@@ -1,20 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <curl/curl.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <curl/curl.h>
 #include <sys/stat.h>
 
 // Function to create a directory
 int createDirectory(const char *path) {
     int status = mkdir(path, 0700);
     if (status == 0 || errno == EEXIST) {
-        return 0; // Directory created successfully or already exists
+        return 0;  // Directory created successfully or already exists
     } else if (status == -1) {
         // Check if the error is due to the parent directory not existing
         if (errno == ENOENT) {
@@ -28,14 +23,14 @@ int createDirectory(const char *path) {
                     // Retry creating the directory
                     status = mkdir(path, 0700);
                     if (status == 0) {
-                        return 0; // Directory created successfully
+                        return 0;  // Directory created successfully
                     }
                 }
             }
         }
         printf("Error creating directory: %s\n", path);
     }
-    return 1; // Error creating directory
+    return 1;  // Error creating directory
 }
 
 // Function to download the figure file
@@ -55,7 +50,7 @@ int downloadFigure(const char *figureLink, const char *figurePath) {
         file = fopen(figurePath, "wb");
         if (!file) {
             curl_easy_cleanup(curl);
-            return 1; // Error opening the file
+            return 1;  // Error opening the file
         }
 
         curl_easy_setopt(curl, CURLOPT_URL, figureLink);
@@ -67,16 +62,16 @@ int downloadFigure(const char *figureLink, const char *figurePath) {
             fclose(file);
             remove(figurePath);
             curl_easy_cleanup(curl);
-            return 1; // Error downloading the file
+            return 1;  // Error downloading the file
         }
 
         fclose(file);
         curl_easy_cleanup(curl);
     } else {
-        return 1; // Error initializing curl
+        return 1;  // Error initializing curl
     }
 
-    return 0; // File downloaded successfully
+    return 0;  // File downloaded successfully
 }
 
 // Function to extract figure links and download the figures
@@ -86,8 +81,9 @@ void extractAndDownloadFigures(const char *filename, const char *figureDir) {
         printf("Error opening the file.\n");
         return;
     }
-
-    createDirectory(figureDir); // Create the figure directory if it doesn't exist
+    
+    // Create the figure directory if it doesn't exist
+    createDirectory(figureDir);
 
     char *line = NULL;
     size_t len = 0;
@@ -103,12 +99,14 @@ void extractAndDownloadFigures(const char *filename, const char *figureDir) {
             char *figureLinkEnd = strstr(figureLinkStart, ")");
 
             // Extract the figure link
-            char *figureLink = (char *)malloc(figureLinkEnd - figureLinkStart + 1);
-            strncpy(figureLink, figureLinkStart, figureLinkEnd - figureLinkStart);
+            char *figureLink =
+                (char *)malloc(figureLinkEnd - figureLinkStart + 1);
+            strncpy(figureLink, figureLinkStart,
+                    figureLinkEnd - figureLinkStart);
             figureLink[figureLinkEnd - figureLinkStart] = '\0';
 
             // Generate a new file path for the figure
-            char figurePath[256];
+            char figurePath[64];
             sprintf(figurePath, "%s/figure%d.png", figureDir, figureCount);
 
             printf("Extracted Figure Link: %s\n", figureLink);
@@ -131,7 +129,8 @@ void extractAndDownloadFigures(const char *filename, const char *figureDir) {
 }
 
 // Function to replace figure links with figure paths in the Markdown file
-void replaceFigureLinks(const char *filename, const char *figureDir, const char *outputFilename) {
+void replaceFigureLinks(const char *filename, const char *figureDir,
+                        const char *outputFilename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
         printf("Error opening the file.\n");
@@ -149,29 +148,31 @@ void replaceFigureLinks(const char *filename, const char *figureDir, const char 
     size_t len = 0;
     ssize_t read;
 
-    int figureCount = 0; // Start figure numbering from 0
+    int figureCount = 0;  // Start figure numbering from 0
 
     while ((read = getline(&line, &len, file)) != -1) {
         // Check if the line contains a figure link
-        if (strstr(line, "![") != NULL && strstr(line, "](") != NULL && strstr(line, "https://") != NULL) {
+        if (strstr(line, "![") != NULL && strstr(line, "](") != NULL &&
+            strstr(line, "https://") != NULL) {
             char *figureStart = strstr(line, "![");
             char *figureEnd = strstr(line, "](");
             char *figureLinkStart = figureEnd + 2;
             char *figureLinkEnd = strstr(figureLinkStart, ")");
 
             // Generate a new file path for the figure
-            char figurePath[256];
+            char figurePath[64];
             sprintf(figurePath, "/%s/figure%d.png", figureDir, figureCount);
-
             // Replace the figure link with the modified format
             size_t figureLinkLen = figureLinkEnd - figureLinkStart;
-            size_t modifiedLineLen = figureStart - line + 3 + strlen(figurePath) + figureLinkLen;
+            size_t modifiedLineLen =
+                figureStart - line + 1 + strlen(figurePath) + 4;
             char *modifiedLine = (char *)malloc(modifiedLineLen + 1);
-            snprintf(modifiedLine, modifiedLineLen + 1, "%.*s![](%s)%.*s",
-                     (int)(figureStart - line), line, figurePath, (int)figureLinkLen, figureLinkStart);
+            snprintf(modifiedLine, modifiedLineLen + 1, "%.*s![](%s)\n",
+                     (int)(figureStart - line), line, figurePath);
 
             fwrite(modifiedLine, modifiedLineLen, 1, outputFile);
-            printf("Original Figure Link: %.*s\n", (int)(figureLinkEnd - figureStart + 2), figureStart);
+            printf("Original Figure Link: %.*s\n",
+                   (int)(figureLinkEnd - figureStart + 2), figureStart);
             printf("Modified Figure Path: ![](%s)\n", figurePath);
 
             figureCount++;
@@ -186,10 +187,6 @@ void replaceFigureLinks(const char *filename, const char *figureDir, const char 
     fclose(file);
     fclose(outputFile);
 }
-
-
-
-
 
 int main() {
     const char *inputFilename = "input.md";

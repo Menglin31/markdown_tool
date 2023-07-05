@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/menglin/mdTool",
-      "program": "/home/menglin/mdTool/mdTool",
+      "cwd": "/home/menglin/menglin31/markdown_tool",
+      "program": "/home/menglin/menglin31/markdown_tool/mdTool",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
