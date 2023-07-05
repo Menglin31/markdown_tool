@@ -163,7 +163,7 @@ void replaceFigureLinks(const char *filename, const char *figureDir,
             char figurePath[64];
             sprintf(figurePath, "/%s/figure%d.png", figureDir, figureCount);
             // Replace the figure link with the modified format
-            size_t figureLinkLen = figureLinkEnd - figureLinkStart;
+            // size_t figureLinkLen = figureLinkEnd - figureLinkStart;
             size_t modifiedLineLen =
                 figureStart - line + 1 + strlen(figurePath) + 4;
             char *modifiedLine = (char *)malloc(modifiedLineLen + 1);
@@ -188,8 +188,11 @@ void replaceFigureLinks(const char *filename, const char *figureDir,
     fclose(outputFile);
 }
 
-int main() {
-    const char *inputFilename = "input.md";
+int main(int argc, char *argv[]) {
+    if(argc==1){
+        printf("./mdTool <inputfile.md>");
+    }
+    const char *inputFilename = argv[1];
     const char *figureDir = "output/figures";
     const char *outputFilename = "output/modified.md";
 
