@@ -5,6 +5,55 @@
 #include <string.h>
 #include <sys/stat.h>
 
+void addNewLineAfterFigureLink(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Error opening the file.\n");
+        return;
+    }
+
+    FILE *tempFile = tmpfile();  // Open a temporary file for writing
+    if (!tempFile) {
+        fclose(file);
+        printf("Error creating temporary file.\n");
+        return;
+    }
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    while ((read = getline(&line, &len, file)) != -1) {
+        fputs(line, tempFile);  // Write the original line to the temporary file
+
+        // Check if the line contains a figure link
+        if (strstr(line, "![") != NULL && strstr(line, "](") != NULL) {
+            // Add a new line after the figure link
+            fputs("\n", tempFile);
+        }
+    }
+
+    free(line);
+    fclose(file);
+    rewind(tempFile);  // Reset the temporary file position to the beginning
+
+    file = fopen(filename, "w");  // Reopen the original file in write mode
+    if (!file) {
+        fclose(tempFile);
+        printf("Error opening the file for writing.\n");
+        return;
+    }
+
+    // Copy the contents from the temporary file back to the original file
+    char buffer[1024];
+    while ((read = fread(buffer, 1, sizeof(buffer), tempFile)) > 0) {
+        fwrite(buffer, 1, read, file);
+    }
+
+    fclose(file);
+    fclose(tempFile);
+}
+
 // Function to create a directory
 int createDirectory(const char *path) {
     int status = mkdir(path, 0700);
@@ -81,7 +130,7 @@ void extractAndDownloadFigures(const char *filename, const char *figureDir) {
         printf("Error opening the file.\n");
         return;
     }
-    
+
     // Create the figure directory if it doesn't exist
     createDirectory(figureDir);
 
@@ -128,7 +177,6 @@ void extractAndDownloadFigures(const char *filename, const char *figureDir) {
     fclose(file);
 }
 
-// Function to replace figure links with figure paths in the Markdown file
 void replaceFigureLinks(const char *filename, const char *figureDir,
                         const char *outputFilename) {
     FILE *file = fopen(filename, "r");
@@ -163,7 +211,7 @@ void replaceFigureLinks(const char *filename, const char *figureDir,
             char figurePath[64];
             sprintf(figurePath, "/%s/figure%d.png", figureDir, figureCount);
             // Replace the figure link with the modified format
-            size_t figureLinkLen = figureLinkEnd - figureLinkStart;
+            // size_t figureLinkLen = figureLinkEnd - figureLinkStart;
             size_t modifiedLineLen =
                 figureStart - line + 1 + strlen(figurePath) + 4;
             char *modifiedLine = (char *)malloc(modifiedLineLen + 1);
@@ -192,7 +240,7 @@ int main() {
     const char *inputFilename = "input.md";
     const char *figureDir = "output/figures";
     const char *outputFilename = "output/modified.md";
-
+    addNewLineAfterFigureLink(inputFilename);
     // Step 1: Extract figure links and download the figures
     extractAndDownloadFigures(inputFilename, figureDir);
 
