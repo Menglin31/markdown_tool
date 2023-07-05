@@ -5,17 +5,18 @@
 #include <string.h>
 #include <sys/stat.h>
 
-void addNewLineAfterFigureLink(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        printf("Error opening the file.\n");
+void addNewLineAfterFigureLink(const char *inputFilename,
+                               const char *outputFilename) {
+    FILE *inputFile = fopen(inputFilename, "r");
+    if (!inputFile) {
+        printf("Error opening the input file.\n");
         return;
     }
 
-    FILE *tempFile = tmpfile();  // Open a temporary file for writing
-    if (!tempFile) {
-        fclose(file);
-        printf("Error creating temporary file.\n");
+    FILE *outputFile = fopen(outputFilename, "w");
+    if (!outputFile) {
+        fclose(inputFile);
+        printf("Error creating the output file.\n");
         return;
     }
 
@@ -23,35 +24,19 @@ void addNewLineAfterFigureLink(const char *filename) {
     size_t len = 0;
     ssize_t read;
 
-    while ((read = getline(&line, &len, file)) != -1) {
-        fputs(line, tempFile);  // Write the original line to the temporary file
+    while ((read = getline(&line, &len, inputFile)) != -1) {
+        fputs(line, outputFile);  // Write the original line to the output file
 
         // Check if the line contains a figure link
         if (strstr(line, "![") != NULL && strstr(line, "](") != NULL) {
             // Add a new line after the figure link
-            fputs("\n", tempFile);
+            fputs("\n", outputFile);
         }
     }
 
     free(line);
-    fclose(file);
-    rewind(tempFile);  // Reset the temporary file position to the beginning
-
-    file = fopen(filename, "w");  // Reopen the original file in write mode
-    if (!file) {
-        fclose(tempFile);
-        printf("Error opening the file for writing.\n");
-        return;
-    }
-
-    // Copy the contents from the temporary file back to the original file
-    char buffer[1024];
-    while ((read = fread(buffer, 1, sizeof(buffer), tempFile)) > 0) {
-        fwrite(buffer, 1, read, file);
-    }
-
-    fclose(file);
-    fclose(tempFile);
+    fclose(inputFile);
+    fclose(outputFile);
 }
 
 // Function to create a directory
@@ -237,21 +222,22 @@ void replaceFigureLinks(const char *filename, const char *figureDir,
 }
 
 int main() {
-    
     // Assuming a maximum filename length of 100 characters
     char inputFilename[100];
     const char *figureDir = "output/figures";
+    const char *tmpfilename = "tmp.md";
+
     const char *outputFilename = "output/modified.md";
 
     printf("Enter the input filename: ");
     scanf("%s", inputFilename);
 
-    addNewLineAfterFigureLink(inputFilename);
+    addNewLineAfterFigureLink(inputFilename, tmpfilename );
     // Step 1: Extract figure links and download the figures
-    extractAndDownloadFigures(inputFilename, figureDir);
+    extractAndDownloadFigures(tmpfilename, figureDir);
 
     // Step 2: Replace figure links with figure paths in the Markdown file
-    replaceFigureLinks(inputFilename, figureDir, outputFilename);
-
+    replaceFigureLinks(tmpfilename, figureDir, outputFilename);
+    remove(tmpfilename);
     return 0;
 }
