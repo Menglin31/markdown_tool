@@ -237,9 +237,15 @@ void replaceFigureLinks(const char *filename, const char *figureDir,
 }
 
 int main() {
-    const char *inputFilename = "input.md";
+    
+    // Assuming a maximum filename length of 100 characters
+    char inputFilename[100];
     const char *figureDir = "output/figures";
     const char *outputFilename = "output/modified.md";
+
+    printf("Enter the input filename: ");
+    scanf("%s", inputFilename);
+
     addNewLineAfterFigureLink(inputFilename);
     // Step 1: Extract figure links and download the figures
     extractAndDownloadFigures(inputFilename, figureDir);
