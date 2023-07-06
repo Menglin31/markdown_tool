@@ -5,6 +5,40 @@
 #include <string.h>
 #include <sys/stat.h>
 
+void addNewLineAfterFigureLink(const char *inputFilename,
+                               const char *outputFilename) {
+    FILE *inputFile = fopen(inputFilename, "r");
+    if (!inputFile) {
+        printf("Error opening the input file.\n");
+        return;
+    }
+
+    FILE *outputFile = fopen(outputFilename, "w");
+    if (!outputFile) {
+        fclose(inputFile);
+        printf("Error creating the output file.\n");
+        return;
+    }
+
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    while ((read = getline(&line, &len, inputFile)) != -1) {
+        fputs(line, outputFile);  // Write the original line to the output file
+
+        // Check if the line contains a figure link
+        if (strstr(line, "![") != NULL && strstr(line, "](") != NULL) {
+            // Add a new line after the figure link
+            fputs("\n", outputFile);
+        }
+    }
+
+    free(line);
+    fclose(inputFile);
+    fclose(outputFile);
+}
+
 // Function to create a directory
 int createDirectory(const char *path) {
     int status = mkdir(path, 0700);
@@ -121,6 +155,7 @@ void extractAndDownloadFigures(const char *filename, const char *figureDir) {
 
 // Function to replace figure links with figure paths in the Markdown file
 void replaceFigureLinks(const char *filename, const char *figureDir, const char *outputFilename) {
+
     FILE *file = fopen(filename, "r");
     if (!file) {
         printf("Error opening the file.\n");
@@ -152,9 +187,11 @@ void replaceFigureLinks(const char *filename, const char *figureDir, const char 
             char figurePath[64];
             snprintf(figurePath, sizeof(figurePath), "/%s/figure%d.png", figureDir, figureCount);
             // Replace the figure link with the modified format
+
             size_t modifiedLineLen = figureStart - line + 1 + strlen(figurePath) + 4;
             char *modifiedLine = malloc(modifiedLineLen + 1);
             snprintf(modifiedLine, modifiedLineLen + 1, "%.*s![](%s)\n", (int)(figureStart - line), line, figurePath);
+
 
             fwrite(modifiedLine, modifiedLineLen, 1, outputFile);
             printf("Original Figure Link: %.*s\n", (int)(figureLinkEnd - figureStart + 2), figureStart);
@@ -173,6 +210,7 @@ void replaceFigureLinks(const char *filename, const char *figureDir, const char 
     fclose(outputFile);
 }
 
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: %s <inputfile.md>\n", argv[0]);
@@ -180,14 +218,21 @@ int main(int argc, char *argv[]) {
     }
 
     const char *inputFilename = argv[1];
+
     const char *figureDir = "output/figures";
+    const char *tmpfilename = "tmp.md";
+
     const char *outputFilename = "output/modified.md";
 
+    printf("Enter the input filename: ");
+    scanf("%s", inputFilename);
+
+    addNewLineAfterFigureLink(inputFilename, tmpfilename );
     // Step 1: Extract figure links and download the figures
-    extractAndDownloadFigures(inputFilename, figureDir);
+    extractAndDownloadFigures(tmpfilename, figureDir);
 
     // Step 2: Replace figure links with figure paths in the Markdown file
-    replaceFigureLinks(inputFilename, figureDir, outputFilename);
-
+    replaceFigureLinks(tmpfilename, figureDir, outputFilename);
+    remove(tmpfilename);
     return 0;
 }
