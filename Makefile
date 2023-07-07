@@ -7,4 +7,4 @@ mdTool: mdTool.c
 
 .PHONY: clean
 clean:
-	rm -f mdTool mdTool1
+	rm -f mdTool 
