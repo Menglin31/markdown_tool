@@ -7,6 +7,9 @@
 
 #define DIR_LEN 100
 #define FILENAME_LEN 100
+#define FORCE 1
+
+int g_force;
 
 void removeExtension(const char *filename, char *dirname) {
     char *lastDot = strrchr(filename, '.');
@@ -19,9 +22,30 @@ void removeExtension(const char *filename, char *dirname) {
     }
 }
 
+int checkDirectory(char *path) {
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            printf("directory %s exists!\n", path);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int createDirectory(char *path) {
     if (mkdir(path, 0777) == -1) {
-        printf("Failed to create directory: %s\n", path);
+        if (g_force == FORCE) {
+            return 0;
+        }
+        if (checkDirectory(path) == 1) {
+            printf(
+                "If you want to overwrite the content in "
+                "the folder, enter \"-f\" when enter the commnad.\n Example: "
+                "./mdTool input.md -f\n");
+        } else {
+            printf("Failed to create directory: %s\n", path);
+        }
         return 1;
     } else {
         printf("Created directory: %s\n", path);
@@ -92,7 +116,7 @@ void extractAndDownloadFigures(char *filename, char *figureDir) {
             figureLink[figureLinkLen] = '\0';
 
             // Generate a new file path for the figure
-            char figurePath[64];
+            char figurePath[DIR_LEN];
             snprintf(figurePath, sizeof(figurePath), "%s/figure%d.png",
                      figureDir, figureCount);
 
@@ -114,6 +138,7 @@ void extractAndDownloadFigures(char *filename, char *figureDir) {
     free(line);
     fclose(file);
 }
+
 void gentmpfile(const char *inputFilename, const char *outputFilename) {
     FILE *inputFile = fopen(inputFilename, "r");
     if (!inputFile) {
@@ -147,7 +172,8 @@ void gentmpfile(const char *inputFilename, const char *outputFilename) {
     fclose(outputFile);
 }
 
-void replaceFigureLinks(char *inputFileName, char *figureDir, char *outputFileName) {
+void replaceFigureLinks(char *inputFileName, char *figureDir,
+                        char *outputFileName) {
     FILE *inputFile = fopen(inputFileName, "r");
     if (!inputFile) {
         printf("Error opening the input file.\n");
@@ -164,6 +190,7 @@ void replaceFigureLinks(char *inputFileName, char *figureDir, char *outputFileNa
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
+
     int figureCount = 0;
 
     while ((read = getline(&line, &len, inputFile)) != -1) {
@@ -179,29 +206,22 @@ void replaceFigureLinks(char *inputFileName, char *figureDir, char *outputFileNa
             figureLink[figureLinkLen] = '\0';
 
             // Generate a new figure path
-            char figurePath[64];
+            char figurePath[DIR_LEN];
             snprintf(figurePath, sizeof(figurePath), "%s/figure%d.png",
                      figureDir, figureCount);
 
             // Replace the figure link in the line
-            char *replacement = malloc(64 + 1 + figureLinkLen + 1);
-            snprintf(replacement, 64 + 1 + figureLinkLen + 1, "![](%s)", figurePath);
+            char *replacement = malloc(DIR_LEN + 1 + figureLinkLen + 1);
+            snprintf(replacement, DIR_LEN + 1 + figureLinkLen + 1, "![](%s)",
+                     figurePath);
             char *figureEnd = figureLinkEnd + 1;
             memmove(figureStart, replacement, strlen(replacement));
-            memmove(figureStart + strlen(replacement), figureEnd, strlen(figureEnd) + 1);
+            memmove(figureStart + strlen(replacement), figureEnd,
+                    strlen(figureEnd) + 1);
 
             // Write the modified line to the output file
             fputs(line, outputFile);
-
-            // Download the figure file
-            int downloadResult = downloadFigure(figureLink, figurePath);
-            if (downloadResult != 0) {
-                printf("Error downloading the figure file.\n");
-            }
-
             figureCount++;
-
-            free(figureLink);
             free(replacement);
         } else {
             // Write the original line to the output file
@@ -214,10 +234,26 @@ void replaceFigureLinks(char *inputFileName, char *figureDir, char *outputFileNa
     fclose(outputFile);
 }
 
+int checkFile(char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("error opening the file: %s\n", filename);
+        return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
+    g_force = 0;
     if (argc < 2) {
         printf("Usage: %s <inputfile.md>\n", argv[0]);
         return 1;
+    }
+
+    if (argc == 3) {
+        if (!strncmp(argv[2], "-f", 2)) {
+            g_force = FORCE;
+        }
     }
 
     // xxx.md
@@ -228,8 +264,15 @@ int main(int argc, char *argv[]) {
     // xxx/xxx_fig
     char figureDir[DIR_LEN];
 
+    // ../xxx_fig
+    char relativeDir[DIR_LEN];
+
     // xxx/xxx.md
     char outputFileName[FILENAME_LEN];
+
+    if (checkFile(inputFileName) != 0) {
+        return 1;
+    }
 
     // xxx.md to xxx
     removeExtension(inputFileName, dirname);
@@ -237,10 +280,16 @@ int main(int argc, char *argv[]) {
     snprintf(figureDir, sizeof(dirname) * 2 + 5, "%s/%s_fig", dirname, dirname);
     snprintf(outputFileName, sizeof(dirname) + sizeof(inputFileName) + 1,
              "%s/%s", dirname, inputFileName);
+    snprintf(relativeDir, sizeof(dirname) + 6, "./%s_fig", dirname);
 
-    createDirectory(dirname);
-    createDirectory(figureDir);
+    if (createDirectory(dirname) != 0) {
+        return 1;
+    }
+    if (createDirectory(figureDir) != 0) {
+        return 1;
+    }
+
     extractAndDownloadFigures(inputFileName, figureDir);
-    replaceFigureLinks(inputFileName, figureDir, outputFileName);
+    replaceFigureLinks(inputFileName, relativeDir, outputFileName);
     return 0;
 }
