@@ -1,0 +1,53 @@
+name: GitHub Actions
+run-name: GitHub Actions
+
+on:
+  push:
+    branches:
+      '*'
+  workflow_dispatch:
+
+jobs:
+  build_macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: brew install cmake
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+      - name: Archive build
+        run: tar -czvf mdTool-macos.tar.gz build/mdTool
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: mdTool-macos
+          path: build/mdTool-macos.tar.gz
+
+  build_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          make
+      - name: Archive build
+        run: tar -czvf mdTool-windows.tar.gz build/mdTool.exe
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: mdTool-windows
+          path: build/mdTool-windows.tar.gz
+
+
