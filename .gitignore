@@ -1,0 +1,6 @@
+mdTool
+input.md
+output/
+tmp.md
+build/
+.vscode/
